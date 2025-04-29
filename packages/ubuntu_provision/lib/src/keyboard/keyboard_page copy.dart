@@ -120,15 +120,6 @@ class _KeyboardPageState extends ConsumerState<KeyboardPage> {
               hint: 'Use arrow keys to navigate and enter to select',
               child: Focus(
                 focusNode: _layoutListFocusNode,
-                onFocusChange: (hasFocus) {
-                  if (hasFocus) {
-                    // Announce when focus moves to the layout list
-                    SemanticsService.announce(
-                      'Keyboard layout list. Selected: ${model.layoutName(model.selectedLayoutIndex)}',
-                      TextDirection.ltr,
-                    );
-                  }
-                },
                 child: AccessibleListWidget(
                   selectedIndex: model.selectedLayoutIndex,
                   itemCount: model.layoutCount,
@@ -141,26 +132,11 @@ class _KeyboardPageState extends ConsumerState<KeyboardPage> {
                       TextDirection.ltr,
                     );
                   },
-                  itemBuilder: (context, index) => MergeSemantics(
-                    child: Semantics(
-                      focusable: true,
-                      selected: index == model.selectedLayoutIndex,
-                      label: model.layoutName(index),
-                      onDidGainAccessibilityFocus: () {
-                        // This will be called when the screen reader focuses on this item
-                        SemanticsService.announce(
-                          'Language option ${index + 1} of ${model.layoutCount}: ${model.layoutName(index)}' +
-                          (index == model.selectedLayoutIndex ? ', selected' : ''),
-                          TextDirection.ltr,
-                        );
-                      },
-                      child: ListTile(
-                        key: ValueKey(index),
-                        title: Text(model.layoutName(index)),
-                        selected: index == model.selectedLayoutIndex,
-                        onTap: () => model.selectLayout(index),
-                      ),
-                    ),
+                  itemBuilder: (context, index) => ListTile(
+                    key: ValueKey(index),
+                    title: Text(model.layoutName(index)),
+                    selected: index == model.selectedLayoutIndex,
+                    onTap: () => model.selectLayout(index),
                   ),
                   onSearch: (value) {
                     final index = model.searchLayout(value);
@@ -329,7 +305,12 @@ class AccessibleListWidget extends StatelessWidget {
         selectedIndex: selectedIndex,
         itemCount: itemCount,
         tabFocusNode: nextFocusNode,
-        itemBuilder: itemBuilder,
+        itemBuilder: (context, index) {
+          return Semantics(
+            selected: index == selectedIndex,
+            child: itemBuilder(context, index),
+          );
+        },
         onKeySearch: onSearch,
       ),
     );

@@ -34,32 +34,30 @@ class NetworkPage extends ConsumerWidget with ProvisioningPage {
     final model = ref.watch(networkModelProvider);
     final lang = NetworkLocalizations.of(context);
 
-    // Explicitly exchange the buttons depending on the model state to make sure we don't get stuck in a loading state
-    final Widget button;
-    if (model.isEnabled && model.canConnect) {
-      button = WizardButton(
-        label: UbuntuLocalizations.of(context).connectLabel,
-        enabled: !model.isConnecting,
-        onActivated: model.connect,
-      );
-    } else {
-      button = NextWizardButton(
-        enabled: model.isEnabled && !model.isConnecting && model.isConnected,
-        // suspend network activity when proceeding on the next page
-        onNext: model.cleanup,
-        // resume network activity if/when returning back to this page
-        onReturn: model.init,
-        focusNode: ref.watch(_nextFocusNodeProvider),
-      );
-    }
-
     return HorizontalPage(
       windowTitle: lang.networkPageTitle,
       title: lang.networkPageHeader,
       padding: const EdgeInsets.all(kYaruPagePadding),
       bottomBar: WizardBar(
         leading: const BackWizardButton(),
-        trailing: [button],
+        trailing: [
+          WizardButton(
+            label: UbuntuLocalizations.of(context).connectLabel,
+            enabled: !model.isConnecting,
+            visible: model.isEnabled && model.canConnect,
+            onActivated: model.connect,
+          ),
+          NextWizardButton(
+            enabled:
+                model.isEnabled && !model.isConnecting && model.isConnected,
+            visible: !model.isEnabled || !model.canConnect,
+            // suspend network activity when proceeding on the next page
+            onNext: model.cleanup,
+            // resume network activity if/when returning back to this page
+            onReturn: model.init,
+            focusNode: ref.watch(_nextFocusNodeProvider),
+          ),
+        ],
       ),
       children: <Widget>[
         Text(lang.networkPageBody),

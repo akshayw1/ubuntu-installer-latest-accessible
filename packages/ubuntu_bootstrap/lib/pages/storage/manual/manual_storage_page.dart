@@ -1,6 +1,6 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:scroll_to_index/scroll_to_index.dart';
 import 'package:ubuntu_bootstrap/l10n.dart';
@@ -35,6 +35,15 @@ class _ManualStoragePageState extends ConsumerState<ManualStoragePage> {
     _scrollListener = _scrollToSelection;
     _model = ref.read(manualStorageModelProvider);
     _model.selectionChangedNotifier.addListener(_scrollListener);
+    
+    // Announce the page when it loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final lang = UbuntuBootstrapLocalizations.of(context);
+      SemanticsService.announce(
+        'Now on ${lang.allocateDiskSpace} page',
+        TextDirection.ltr,
+      );
+    });
   }
 
   @override
@@ -63,39 +72,69 @@ class _ManualStoragePageState extends ConsumerState<ManualStoragePage> {
 
     return WizardPage(
       title: YaruWindowTitleBar(
-        title: Text(lang.allocateDiskSpace),
+        title: Semantics(
+          label: lang.allocateDiskSpace,
+          header: true,
+          child: Text(lang.allocateDiskSpace),
+        ),
       ),
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const PartitionBar(),
+          Semantics(
+            label: 'Storage partition overview',
+            child: const PartitionBar(),
+          ),
           const SizedBox(height: kWizardSpacing / 4),
-          const PartitionLegend(),
+          Semantics(
+            label: 'Partition legend',
+            child: const PartitionLegend(),
+          ),
           const SizedBox(height: kWizardSpacing),
-          Expanded(child: PartitionTable(controller: _scrollController)),
+          Expanded(
+            child: Semantics(
+              label: 'Partition table',
+              child: PartitionTable(controller: _scrollController),
+            ),
+          ),
           const SizedBox(height: kWizardSpacing / 2),
-          const PartitionButtonRow(),
+          Semantics(
+            label: 'Partition buttons',
+            child: const PartitionButtonRow(),
+          ),
           const SizedBox(height: kWizardSpacing / 2),
           FractionallySizedBox(
             widthFactor: 0.5,
             alignment: Alignment.topLeft,
-            child: StorageSelector(
-              title: lang.bootLoaderDevice,
-              storages: model.disks,
-              selected: model.bootDiskIndex,
-              enabled: (disk) => disk.canBeBootDevice,
-              onSelected: (storage) => model.selectBootDisk(storage!),
+            child: Semantics(
+              label: 'Boot loader device selection',
+              child: StorageSelector(
+                title: lang.bootLoaderDevice,
+                storages: model.disks,
+                selected: model.bootDiskIndex,
+                enabled: (disk) => disk.canBeBootDevice,
+                onSelected: (storage) => model.selectBootDisk(storage!),
+              ),
             ),
           ),
         ],
       ),
       bottomBar: WizardBar(
-        leading: const BackWizardButton(),
+        leading: Semantics(
+          button: true,
+          label: 'Back',
+          child: const BackWizardButton(),
+        ),
         trailing: [
-          NextWizardButton(
+          Semantics(
+            button: true,
+            label: 'Next',
             enabled: model.isValid,
-            onNext: model.setStorage,
-            onReturn: model.resetStorage,
+            child: NextWizardButton(
+              enabled: model.isValid,
+              onNext: model.setStorage,
+              onReturn: model.resetStorage,
+            ),
           ),
         ],
       ),
