@@ -9,10 +9,7 @@ import 'package:yaru/icons.dart';
 typedef DiskBuilder = Widget Function(BuildContext context, Disk disk);
 typedef GapBuilder = Widget Function(BuildContext context, Disk disk, Gap gap);
 typedef PartitionBuilder = Widget Function(
-  BuildContext context,
-  Disk disk,
-  Partition partition,
-);
+    BuildContext context, Disk disk, Partition partition);
 
 class StorageColumn {
   const StorageColumn({
@@ -33,20 +30,21 @@ class StorageDeviceColumn extends StorageColumn {
       : super(
           titleBuilder: (context) {
             final lang = UbuntuBootstrapLocalizations.of(context);
-            return Semantics(
-              header: true,
-              child: Text(lang.diskHeadersDevice),
-            );
+            return Text(lang.diskHeadersDevice);
           },
           diskBuilder: (context, disk) {
+            // Define the full row description for accessibility
+            final rowLabel = "Device ${disk.sysname}, Size ${context.formatByteSize(disk.size)}";
             return Semantics(
-              label: 'Disk device: ${disk.sysname}',
-              child: Row(
-                children: [
-                  const Icon(YaruIcons.drive_harddisk_filled),
-                  const SizedBox(width: 16),
-                  Text(disk.sysname),
-                ],
+              label: rowLabel,
+              child: ExcludeSemantics(
+                child: Row(
+                  children: [
+                    const Icon(YaruIcons.drive_harddisk_filled),
+                    const SizedBox(width: 16),
+                    Text(disk.sysname),
+                  ],
+                ),
               ),
             );
           },
@@ -55,47 +53,54 @@ class StorageDeviceColumn extends StorageColumn {
             final color = gap.tooManyPrimaryPartitions
                 ? Theme.of(context).disabledColor
                 : null;
+            final rowLabel = gap.tooManyPrimaryPartitions
+                ? "Device Free space, Type ${lang.partitionLimitReached}, Size ${context.formatByteSize(gap.size)}"
+                : "Device Free space, Type ${lang.freeDiskSpace}, Size ${context.formatByteSize(gap.size)}";
             return Semantics(
-              label: gap.tooManyPrimaryPartitions
-                  ? 'Error: Too many primary partitions'
-                  : 'Free disk space',
-              child: Tooltip(
-                message: gap.tooManyPrimaryPartitions
-                    ? lang.tooManyPrimaryPartitions
-                    : '',
-                child: Row(
-                  children: [
-                    Icon(
-                      gap.tooManyPrimaryPartitions
-                          ? YaruIcons.drive_harddisk_error
-                          : YaruIcons.drive_harddisk,
-                      color: color,
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      gap.tooManyPrimaryPartitions
-                          ? lang.partitionLimitReached
-                          : lang.freeDiskSpace,
-                      style: TextStyle(color: color),
-                    ),
-                  ],
+              label: rowLabel,
+              child: ExcludeSemantics(
+                child: Tooltip(
+                  message: gap.tooManyPrimaryPartitions
+                      ? lang.tooManyPrimaryPartitions
+                      : '',
+                  child: Row(
+                    children: [
+                      Icon(
+                        gap.tooManyPrimaryPartitions
+                            ? YaruIcons.drive_harddisk_error
+                            : YaruIcons.drive_harddisk,
+                        color: color,
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        gap.tooManyPrimaryPartitions
+                            ? lang.partitionLimitReached
+                            : lang.freeDiskSpace,
+                        style: TextStyle(color: color),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
           },
           partitionBuilder: (context, disk, partition) {
+            final rowLabel =
+                "Device ${partition.sysname}, Type ${PartitionFormat.fromPartition(partition)?.displayName ?? partition.format ?? ''}, Mount point ${partition.mount ?? ''}, Size ${context.formatByteSize(partition.size ?? 0)}, System ${partition.os?.long ?? ''}";
             return Semantics(
-              label: 'Partition device: ${partition.sysname}${partition.isEncrypted ? ', encrypted' : ''}',
-              child: Row(
-                children: [
-                  Icon(
-                    partition.isEncrypted
-                        ? YaruIcons.lock
-                        : YaruIcons.drive_harddisk,
-                  ),
-                  const SizedBox(width: 16),
-                  Text(partition.sysname),
-                ],
+              label: rowLabel,
+              child: ExcludeSemantics(
+                child: Row(
+                  children: [
+                    Icon(
+                      partition.isEncrypted
+                          ? YaruIcons.lock
+                          : YaruIcons.drive_harddisk,
+                    ),
+                    const SizedBox(width: 16),
+                    Text(partition.sysname),
+                  ],
+                ),
               ),
             );
           },
@@ -107,10 +112,7 @@ class StorageTypeColumn extends StorageColumn {
       : super(
           titleBuilder: (context) {
             final lang = UbuntuBootstrapLocalizations.of(context);
-            return Semantics(
-              header: true,
-              child: Text(lang.diskHeadersType),
-            );
+            return Text(lang.diskHeadersType);
           },
           diskBuilder: (context, disk) {
             return const SizedBox.shrink();
@@ -119,12 +121,12 @@ class StorageTypeColumn extends StorageColumn {
             return const SizedBox.shrink();
           },
           partitionBuilder: (context, disk, partition) {
-            final formatName = PartitionFormat.fromPartition(partition)?.displayName ??
-                partition.format ??
-                '';
-            return Semantics(
-              label: 'Type: $formatName',
-              child: Text(formatName),
+            return ExcludeSemantics(
+              child: Text(
+                PartitionFormat.fromPartition(partition)?.displayName ??
+                    partition.format ??
+                    '',
+              ),
             );
           },
         );
@@ -135,10 +137,7 @@ class StorageMountColumn extends StorageColumn {
       : super(
           titleBuilder: (context) {
             final lang = UbuntuBootstrapLocalizations.of(context);
-            return Semantics(
-              header: true,
-              child: Text(lang.diskHeadersMountPoint),
-            );
+            return Text(lang.diskHeadersMountPoint);
           },
           diskBuilder: (context, disk) {
             return const SizedBox.shrink();
@@ -147,10 +146,8 @@ class StorageMountColumn extends StorageColumn {
             return const SizedBox.shrink();
           },
           partitionBuilder: (context, disk, partition) {
-            final mountPoint = partition.mount ?? '';
-            return Semantics(
-              label: 'Mount point: ${mountPoint.isEmpty ? 'none' : mountPoint}',
-              child: Text(mountPoint),
+            return ExcludeSemantics(
+              child: Text(partition.mount ?? ''),
             );
           },
         );
@@ -161,14 +158,10 @@ class StorageSizeColumn extends StorageColumn {
       : super(
           titleBuilder: (context) {
             final lang = UbuntuBootstrapLocalizations.of(context);
-            return Semantics(
-              header: true,
-              child: Text(lang.diskHeadersSize),
-            );
+            return Text(lang.diskHeadersSize);
           },
           diskBuilder: (context, disk) {
-            return Semantics(
-              label: 'Disk size: ${context.formatByteSize(disk.size)}',
+            return ExcludeSemantics(
               child: Text(context.formatByteSize(disk.size)),
             );
           },
@@ -177,8 +170,7 @@ class StorageSizeColumn extends StorageColumn {
             final color = gap.tooManyPrimaryPartitions
                 ? Theme.of(context).disabledColor
                 : null;
-            return Semantics(
-              label: 'Free space: ${context.formatByteSize(gap.size)}${gap.tooManyPrimaryPartitions ? ', too many primary partitions' : ''}',
+            return ExcludeSemantics(
               child: Tooltip(
                 message: gap.tooManyPrimaryPartitions
                     ? lang.tooManyPrimaryPartitions
@@ -191,8 +183,7 @@ class StorageSizeColumn extends StorageColumn {
             );
           },
           partitionBuilder: (context, disk, partition) {
-            return Semantics(
-              label: 'Partition size: ${context.formatByteSize(partition.size ?? 0)}',
+            return ExcludeSemantics(
               child: Text(context.formatByteSize(partition.size ?? 0)),
             );
           },
@@ -204,10 +195,7 @@ class StorageSystemColumn extends StorageColumn {
       : super(
           titleBuilder: (context) {
             final lang = UbuntuBootstrapLocalizations.of(context);
-            return Semantics(
-              header: true,
-              child: Text(lang.diskHeadersSystem),
-            );
+            return Text(lang.diskHeadersSystem);
           },
           diskBuilder: (context, disk) {
             return const SizedBox.shrink();
@@ -216,10 +204,8 @@ class StorageSystemColumn extends StorageColumn {
             return const SizedBox.shrink();
           },
           partitionBuilder: (context, disk, partition) {
-            final systemName = partition.os?.long ?? '';
-            return Semantics(
-              label: 'System: ${systemName.isEmpty ? 'none' : systemName}',
-              child: Text(systemName),
+            return ExcludeSemantics(
+              child: Text(partition.os?.long ?? ''),
             );
           },
         );
@@ -230,10 +216,7 @@ class StorageWipeColumn extends StorageColumn {
       : super(
           titleBuilder: (context) {
             final lang = UbuntuBootstrapLocalizations.of(context);
-            return Semantics(
-              header: true,
-              child: Text(lang.diskHeadersFormat),
-            );
+            return Text(lang.diskHeadersFormat);
           },
           diskBuilder: (context, disk) {
             return const SizedBox.shrink();
@@ -242,21 +225,19 @@ class StorageWipeColumn extends StorageColumn {
             return const SizedBox.shrink();
           },
           partitionBuilder: (context, disk, partition) {
-            return Consumer(
-              builder: (context, ref, child) {
-                final model = ref.read(manualStorageModelProvider);
-                final config = model.originalConfig(partition);
-                final forceWipe = config?.mustWipe(partition.format) ?? true;
-                final isWiped = partition.isWiped || forceWipe;
-                return Semantics(
-                  label: 'Format: ${isWiped ? 'selected' : 'not selected'}',
-                  child: Icon(
-                    isWiped
+            return ExcludeSemantics(
+              child: Consumer(
+                builder: (context, ref, child) {
+                  final model = ref.read(manualStorageModelProvider);
+                  final config = model.originalConfig(partition);
+                  final forceWipe = config?.mustWipe(partition.format) ?? true;
+                  return Icon(
+                    partition.isWiped || forceWipe
                         ? YaruIcons.checkbox_checked_filled
                         : YaruIcons.checkbox,
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             );
           },
         );
