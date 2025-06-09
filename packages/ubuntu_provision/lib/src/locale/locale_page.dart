@@ -16,18 +16,18 @@ class LocalePage extends ConsumerWidget with ProvisioningPage {
     final model = ref.read(localeModelProvider);
     await model.init();
     unawaited(model.playWelcomeSound());
-    
+
     // Add this code to announce page title when loading
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final flavor = ref.read(flavorProvider);
       final lang = LocaleLocalizations.of(context);
       final title = lang.localePageTitle(flavor.displayName);
-      
+
       // Use SemanticsService to force announcement
       // Import services.dart if needed
       SemanticsService.announce(title, TextDirection.ltr);
     });
-    
+
     return true;
   }
 
@@ -37,10 +37,10 @@ class LocalePage extends ConsumerWidget with ProvisioningPage {
     final model = ref.watch(localeModelProvider);
     final lang = LocaleLocalizations.of(context);
     final nextFocusNode = ref.watch(_nextFocusNodeProvider);
-    
+
     // Create a controller to manage the scroll position
     final ScrollController scrollController = ScrollController();
-    
+
     // Create focus nodes for proper tab ordering
     final listFocusNode = FocusNode();
 
@@ -68,24 +68,34 @@ class LocalePage extends ConsumerWidget with ProvisioningPage {
           child: FocusTraversalGroup(
             child: Semantics(
               // Semantic label for screen readers
-              label: "Language selection",
+              label:
+                  "Language selection - Use arrow keys to navigate on this list. "
+                  "Press Home to go to the first item, End to go to the last item. on this",
               excludeSemantics: false,
               child: Focus(
                 focusNode: listFocusNode,
                 autofocus: true,
                 onKeyEvent: (node, event) {
                   // Handle Home key to go to first item
-                  if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.home) {
+                  if (event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.home) {
                     model.selectLanguage(0);
                     return KeyEventResult.handled;
                   }
                   // Handle End key to go to last item
-                  if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.end) {
+                  if (event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.end) {
+                    model.selectLanguage(model.languageCount - 1);
+                    return KeyEventResult.handled;
+                  }
+                  if (event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.end) {
                     model.selectLanguage(model.languageCount - 1);
                     return KeyEventResult.handled;
                   }
                   // Let tab navigation work naturally
-                  if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.tab) {
+                  if (event is KeyDownEvent &&
+                      event.logicalKey == LogicalKeyboardKey.tab) {
                     // Check if shift key is pressed using the correct property
                     if (HardwareKeyboard.instance.isShiftPressed) {
                       // Shift+Tab - focus should move to previous field
@@ -106,8 +116,10 @@ class LocalePage extends ConsumerWidget with ProvisioningPage {
                     child: Semantics(
                       selected: index == model.selectedIndex,
                       // Add position information for screen readers
-                      value: '${model.language(index)}, item ${index + 1} of ${model.languageCount}',
-                      increasedValue: index == model.selectedIndex ? 'Selected' : null,
+                      value:
+                          '${model.language(index)}, item ${index + 1} of ${model.languageCount}',
+                      increasedValue:
+                          index == model.selectedIndex ? 'Selected' : null,
                       child: ListTile(
                         key: ValueKey(index),
                         title: Text(model.language(index)),
