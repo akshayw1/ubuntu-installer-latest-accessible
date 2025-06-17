@@ -37,27 +37,13 @@ class _TimezonePageState extends ConsumerState<TimezonePage> {
   // Focus node for initial focus
   final FocusNode _initialFocusNode = FocusNode();
   
-  // Controllers for text fields
-  late TextEditingController _locationController;
-  late TextEditingController _timezoneController;
-  
-  // For managing dropdown state
-  List<GeoLocation> _locationSuggestions = [];
-  List<GeoLocation> _timezoneSuggestions = [];
-  bool _showLocationDropdown = false;
-  bool _showTimezoneDropdown = false;
+  // Focus nodes for form fields
+  final FocusNode _locationFocusNode = FocusNode();
+  final FocusNode _timezoneFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
-    
-    final model = ref.read(timezoneModelProvider);
-    _locationController = TextEditingController(
-      text: TimezonePage.formatLocation(model.selectedLocation),
-    );
-    _timezoneController = TextEditingController(
-      text: TimezonePage.formatTimezone(model.selectedLocation),
-    );
     
     // Announce the page when it loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -67,6 +53,7 @@ class _TimezonePageState extends ConsumerState<TimezonePage> {
       WidgetsBinding.instance.ensureSemantics();
       
       final lang = TimezoneLocalizations.of(context);
+      final model = ref.read(timezoneModelProvider);
       
       // Request focus to ensure Orca is active
       _initialFocusNode.requestFocus();
@@ -96,233 +83,28 @@ class _TimezonePageState extends ConsumerState<TimezonePage> {
           });
         }
       });
+      
+      // Set focus on location field after announcement
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          _locationFocusNode.requestFocus();
+        }
+      });
     });
   }
 
   @override
   void dispose() {
     _initialFocusNode.dispose();
-    _locationController.dispose();
-    _timezoneController.dispose();
+    _locationFocusNode.dispose();
+    _timezoneFocusNode.dispose();
     super.dispose();
-  }
-
-  Widget _buildAccessibleLocationField(BuildContext context) {
-    final lang = TimezoneLocalizations.of(context);
-    final model = ref.watch(timezoneModelProvider);
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Semantics(
-          label: 'Location search. Current value: ${_locationController.text.isEmpty ? "empty" : _locationController.text}',
-          hint: 'Type to search for a city. Use arrow keys to navigate suggestions.',
-          textField: true,
-          child: TextField(
-            controller: _locationController,
-            decoration: InputDecoration(
-              labelText: lang.timezoneLocationLabel,
-              hintText: 'Search for a city...',
-              suffixIcon: Icon(Icons.search),
-            ),
-            onChanged: (value) async {
-              if (value.isEmpty) {
-                setState(() {
-                  _showLocationDropdown = false;
-                  _locationSuggestions = [];
-                });
-                return;
-              }
-              
-              final suggestions = await model.searchLocation(value);
-              setState(() {
-                _locationSuggestions = suggestions.take(5).toList();
-                _showLocationDropdown = _locationSuggestions.isNotEmpty;
-              });
-              
-              if (_locationSuggestions.isNotEmpty && mounted) {
-                SemanticsService.announce(
-                  '${_locationSuggestions.length} suggestions found. Use down arrow to navigate.',
-                  TextDirection.ltr,
-                );
-              }
-            },
-            onSubmitted: (value) {
-              if (_locationSuggestions.isNotEmpty) {
-                _selectLocation(_locationSuggestions.first);
-              }
-            },
-          ),
-        ),
-        if (_showLocationDropdown)
-          Semantics(
-            label: 'Location suggestions list',
-            hint: 'Use arrow keys to navigate, Enter to select',
-            child: Container(
-              constraints: BoxConstraints(maxHeight: 200),
-              decoration: BoxDecoration(
-                border: Border.all(color: Theme.of(context).dividerColor),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _locationSuggestions.length,
-                itemBuilder: (context, index) {
-                  final location = _locationSuggestions[index];
-                  final locationText = TimezonePage.formatLocation(location);
-                  
-                  return Semantics(
-                    label: 'Suggestion ${index + 1} of ${_locationSuggestions.length}: $locationText',
-                    button: true,
-                    child: InkWell(
-                      onTap: () => _selectLocation(location),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        child: Text(locationText),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildAccessibleTimezoneField(BuildContext context) {
-    final lang = TimezoneLocalizations.of(context);
-    final model = ref.watch(timezoneModelProvider);
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Semantics(
-          label: 'Timezone search. Current value: ${_timezoneController.text.isEmpty ? "empty" : _timezoneController.text}',
-          hint: 'Type to search for a timezone. Use arrow keys to navigate suggestions.',
-          textField: true,
-          child: TextField(
-            controller: _timezoneController,
-            decoration: InputDecoration(
-              labelText: lang.timezoneTimezoneLabel,
-              hintText: 'Search for a timezone...',
-              suffixIcon: Icon(Icons.access_time),
-            ),
-            onChanged: (value) async {
-              if (value.isEmpty) {
-                setState(() {
-                  _showTimezoneDropdown = false;
-                  _timezoneSuggestions = [];
-                });
-                return;
-              }
-              
-              final suggestions = await model.searchTimezone(value);
-              setState(() {
-                _timezoneSuggestions = suggestions.take(5).toList();
-                _showTimezoneDropdown = _timezoneSuggestions.isNotEmpty;
-              });
-              
-              if (_timezoneSuggestions.isNotEmpty && mounted) {
-                SemanticsService.announce(
-                  '${_timezoneSuggestions.length} timezone suggestions found. Use down arrow to navigate.',
-                  TextDirection.ltr,
-                );
-              }
-            },
-            onSubmitted: (value) {
-              if (_timezoneSuggestions.isNotEmpty) {
-                _selectTimezone(_timezoneSuggestions.first);
-              }
-            },
-          ),
-        ),
-        if (_showTimezoneDropdown)
-          Semantics(
-            label: 'Timezone suggestions list',
-            hint: 'Use arrow keys to navigate, Enter to select',
-            child: Container(
-              constraints: BoxConstraints(maxHeight: 200),
-              decoration: BoxDecoration(
-                border: Border.all(color: Theme.of(context).dividerColor),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: _timezoneSuggestions.length,
-                itemBuilder: (context, index) {
-                  final location = _timezoneSuggestions[index];
-                  final timezoneText = TimezonePage.formatTimezone(location);
-                  
-                  return Semantics(
-                    label: 'Suggestion ${index + 1} of ${_timezoneSuggestions.length}: $timezoneText',
-                    button: true,
-                    child: InkWell(
-                      onTap: () => _selectTimezone(location),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        child: Text(timezoneText),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-
-  void _selectLocation(GeoLocation location) {
-    final model = ref.read(timezoneModelProvider);
-    model.selectLocation(location);
-    
-    setState(() {
-      _locationController.text = TimezonePage.formatLocation(location);
-      _timezoneController.text = TimezonePage.formatTimezone(location);
-      _showLocationDropdown = false;
-      _locationSuggestions = [];
-    });
-    
-    if (mounted) {
-      SemanticsService.announce(
-        'Selected location: ${TimezonePage.formatLocation(location)}',
-        TextDirection.ltr,
-      );
-    }
-  }
-
-  void _selectTimezone(GeoLocation location) {
-    final model = ref.read(timezoneModelProvider);
-    model.selectTimezone(location);
-    
-    setState(() {
-      _locationController.text = TimezonePage.formatLocation(location);
-      _timezoneController.text = TimezonePage.formatTimezone(location);
-      _showTimezoneDropdown = false;
-      _timezoneSuggestions = [];
-    });
-    
-    if (mounted) {
-      SemanticsService.announce(
-        'Selected timezone: ${TimezonePage.formatTimezone(location)}',
-        TextDirection.ltr,
-      );
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final lang = TimezoneLocalizations.of(context);
     final model = ref.watch(timezoneModelProvider);
-
-    // Update controllers when model changes
-    if (!_locationController.text.contains(TimezonePage.formatLocation(model.selectedLocation))) {
-      _locationController.text = TimezonePage.formatLocation(model.selectedLocation);
-    }
-    if (!_timezoneController.text.contains(TimezonePage.formatTimezone(model.selectedLocation))) {
-      _timezoneController.text = TimezonePage.formatTimezone(model.selectedLocation);
-    }
 
     return Focus(
       focusNode: _initialFocusNode,
@@ -357,11 +139,89 @@ class _TimezonePageState extends ConsumerState<TimezonePage> {
                 child: Row(
                   children: <Widget>[
                     Expanded(
-                      child: _buildAccessibleLocationField(context),
+                      child: Semantics(
+                        label: 'Location search field',
+                        hint: 'Type to search for a city',
+                        textField: true,
+                        child: YaruAutocomplete<GeoLocation>(
+                          initialValue: TextEditingValue(
+                            text: TimezonePage.formatLocation(model.selectedLocation),
+                          ),
+                          fieldViewBuilder:
+                              (context, editor, focusNode, onSubmitted) {
+                            if (!focusNode.hasFocus) {
+                              editor.text = TimezonePage.formatLocation(model.selectedLocation);
+                            }
+                            return Focus(
+                              focusNode: _locationFocusNode,
+                              child: TextFormField(
+                                focusNode: focusNode,
+                                controller: editor,
+                                decoration: InputDecoration(
+                                  labelText: lang.timezoneLocationLabel,
+                                ),
+                                onFieldSubmitted: (value) => onSubmitted(),
+                              ),
+                            );
+                          },
+                          displayStringForOption: TimezonePage.formatLocation,
+                          optionsBuilder: (value) {
+                            return model.searchLocation(value.text);
+                          },
+                          onSelected: (location) {
+                            model.selectLocation(location);
+                            if (mounted) {
+                              SemanticsService.announce(
+                                'Selected location: ${TimezonePage.formatLocation(location)}',
+                                TextDirection.ltr,
+                              );
+                            }
+                          },
+                        ),
+                      ),
                     ),
                     const SizedBox(width: kWizardSpacing),
                     Expanded(
-                      child: _buildAccessibleTimezoneField(context),
+                      child: Semantics(
+                        label: 'Timezone search field',
+                        hint: 'Type to search for a timezone',
+                        textField: true,
+                        child: YaruAutocomplete<GeoLocation>(
+                          initialValue: TextEditingValue(
+                            text: TimezonePage.formatTimezone(model.selectedLocation),
+                          ),
+                          fieldViewBuilder:
+                              (context, editor, focusNode, onFieldSubmitted) {
+                            if (!focusNode.hasFocus) {
+                              editor.text = TimezonePage.formatTimezone(model.selectedLocation);
+                            }
+                            return Focus(
+                              focusNode: _timezoneFocusNode,
+                              child: TextFormField(
+                                focusNode: focusNode,
+                                controller: editor,
+                                decoration: InputDecoration(
+                                  labelText: lang.timezoneTimezoneLabel,
+                                ),
+                                onFieldSubmitted: (value) => onFieldSubmitted(),
+                              ),
+                            );
+                          },
+                          displayStringForOption: TimezonePage.formatTimezone,
+                          optionsBuilder: (value) {
+                            return model.searchTimezone(value.text);
+                          },
+                          onSelected: (location) {
+                            model.selectTimezone(location);
+                            if (mounted) {
+                              SemanticsService.announce(
+                                'Selected timezone: ${TimezonePage.formatTimezone(location)}',
+                                TextDirection.ltr,
+                              );
+                            }
+                          },
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -377,8 +237,12 @@ class _TimezonePageState extends ConsumerState<TimezonePage> {
                     marker: model.selectedLocation?.coordinates,
                     onPressed: (coordinates) =>
                         model.searchMap(coordinates).then((location) {
-                          if (location != null) {
-                            _selectLocation(location);
+                          model.selectLocation(location);
+                          if (mounted && location != null) {
+                            SemanticsService.announce(
+                              'Selected ${TimezonePage.formatLocation(location)} from map',
+                              TextDirection.ltr,
+                            );
                           }
                         }),
                   ),
