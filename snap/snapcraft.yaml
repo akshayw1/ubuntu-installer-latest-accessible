@@ -1,6 +1,6 @@
-name: ubuntu-desktop-bootstrap
+name: ubuntu-desktop-bootstrap-accessible
 version: git
-summary: Ubuntu Desktop Bootstrap
+summary: Ubuntu Desktop Bootstrap (Accessible Installer)
 description: |
   A modern implementation of the Ubuntu Desktop installer.
   It comprises a Flutter-based UI and uses subiquity as the backend.
@@ -48,8 +48,8 @@ parts:
   ubuntu-bootstrap:
     after: [flutter-git]
     plugin: nil
-    source: .
-    source-commit: &commit-ref fcb89e101221e8b5c7fa6a8bc5c5d7f174042ed2
+    source: https://github.com/akshayw1/ubuntu-installer-latest-accessible.git
+    source-commit: &commit-ref 61cda511602005133b52434bbefa38a7fb44313b
     source-type: git
     build-attributes: [enable-patchelf]
     override-build: |
@@ -149,7 +149,7 @@ parts:
 
   flutter-git:
     plugin: nil
-    source: .
+    source: https://github.com/akshayw1/ubuntu-installer-latest-accessible.git
     source-commit: *commit-ref
     source-type: git
     override-pull: |
